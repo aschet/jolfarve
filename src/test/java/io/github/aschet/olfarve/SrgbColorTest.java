@@ -6,6 +6,8 @@ package io.github.aschet.olfarve;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -56,5 +58,27 @@ class SrgbColorTest {
       assertTrue(component >= 0 && component <= 255);
     }
     assertEquals(expected, color.toHex());
+  }
+
+  @Test
+  void equalsAndHashCodeFollowComponentEquality() {
+    SrgbColor a = new SrgbColor(0.1, 0.2, 0.3);
+    SrgbColor b = new SrgbColor(0.1, 0.2, 0.3);
+    SrgbColor different = new SrgbColor(0.1, 0.2, 0.4);
+
+    assertEquals(a, a);
+    assertEquals(a, b);
+    assertEquals(a.hashCode(), b.hashCode());
+    assertNotEquals(a, different);
+    assertFalse(a.equals(null));
+    assertFalse(a.equals("not a color"));
+  }
+
+  @Test
+  void toStringContainsComponents() {
+    String text = new SrgbColor(0.1, 0.2, 0.3).toString();
+    assertTrue(text.contains("0.1"));
+    assertTrue(text.contains("0.2"));
+    assertTrue(text.contains("0.3"));
   }
 }

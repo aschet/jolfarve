@@ -95,4 +95,34 @@ class CliTest {
     assertEquals(0, result.status);
     assertTrue(result.outLines[0].contains(Olfarve.VERSION));
   }
+
+  @Test
+  void help() {
+    Result result = run("--help");
+    assertEquals(0, result.status);
+    assertTrue(result.outLines[0].startsWith("usage: olfarve"));
+    assertTrue(result.errLines.length == 0);
+  }
+
+  @Test
+  void missingScaleValueExitsWithError() {
+    assertEquals(2, run("--scale").status);
+    assertEquals(2, run("10", "-s").status);
+  }
+
+  @Test
+  void missingPathLengthValueExitsWithError() {
+    assertEquals(2, run("--path-length").status);
+    assertEquals(2, run("10", "-p").status);
+  }
+
+  @Test
+  void invalidScaleChoiceExitsWithError() {
+    assertEquals(2, run("--scale", "bogus", "10").status);
+  }
+
+  @Test
+  void unrecognizedOptionExitsWithError() {
+    assertEquals(2, run("--bogus", "10").status);
+  }
 }

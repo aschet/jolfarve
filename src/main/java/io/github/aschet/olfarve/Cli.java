@@ -18,7 +18,11 @@ public final class Cli {
 
   private Cli() {}
 
-  /** Runs the command line interface and exits the process with its status. */
+  /**
+   * Runs the command line interface and exits the process with its status.
+   *
+   * @param args the command line arguments
+   */
   public static void main(String[] args) {
     System.exit(run(args, System.out, System.err));
   }

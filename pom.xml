@@ -94,6 +94,9 @@ SPDX-License-Identifier: MIT
             <manifest>
               <mainClass>io.github.aschet.olfarve.Cli</mainClass>
             </manifest>
+            <manifestEntries>
+              <Automatic-Module-Name>io.github.aschet.olfarve</Automatic-Module-Name>
+            </manifestEntries>
           </archive>
         </configuration>
       </plugin>

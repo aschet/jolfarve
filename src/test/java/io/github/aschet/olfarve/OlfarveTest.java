@@ -36,6 +36,11 @@ class OlfarveTest {
   }
 
   @Test
+  void absorptionToSrgbReferenceValue() {
+    assertEquals("#ba5b00", Olfarve.absorptionToSrgb(10.0 / 12.7).toHex());
+  }
+
+  @Test
   void normalizationFactorScalesWhiteToOne() {
     SrgbColor color = Olfarve.absorptionToSrgb(0.0);
     assertEquals(1.0, color.getR(), 1e-4);
@@ -118,7 +123,17 @@ class OlfarveTest {
   }
 
   @Test
+  void negativeSrmPathLengthRaises() {
+    assertThrows(IllegalArgumentException.class, () -> Olfarve.srmToSrgb(1, -1.0));
+  }
+
+  @Test
   void negativeEbcRaises() {
     assertThrows(IllegalArgumentException.class, () -> Olfarve.ebcToSrgb(-1));
+  }
+
+  @Test
+  void negativeEbcPathLengthRaises() {
+    assertThrows(IllegalArgumentException.class, () -> Olfarve.ebcToSrgb(1, -1.0));
   }
 }
