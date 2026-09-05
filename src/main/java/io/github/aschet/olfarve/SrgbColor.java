@@ -31,17 +31,29 @@ public final class SrgbColor {
     this.b = b;
   }
 
-  /** Returns the red component. */
+  /**
+   * Returns the red component.
+   *
+   * @return the red component
+   */
   public double getR() {
     return r;
   }
 
-  /** Returns the green component. */
+  /**
+   * Returns the green component.
+   *
+   * @return the green component
+   */
   public double getG() {
     return g;
   }
 
-  /** Returns the blue component. */
+  /**
+   * Returns the blue component.
+   *
+   * @return the blue component
+   */
   public double getB() {
     return b;
   }
@@ -56,6 +68,8 @@ public final class SrgbColor {
    * new SrgbColor(1.0, 0.5, 0.0).toRgb8(); // {255, 128, 0}
    * new SrgbColor(2.0, -1.0, 0.0).toRgb8(); // {255, 0, 0}
    * }</pre>
+   *
+   * @return the color as {@code {r, g, b}}, each component in {@code [0, 255]}
    */
   public int[] toRgb8() {
     return new int[] {to8Bit(r), to8Bit(g), to8Bit(b)};
@@ -68,6 +82,8 @@ public final class SrgbColor {
    * new SrgbColor(1.0, 0.5, 0.0).toHex(); // "#ff8000"
    * new SrgbColor(2.0, -1.0, 0.0).toHex(); // "#ff0000"
    * }</pre>
+   *
+   * @return the color as a lowercase {@code #rrggbb} hex string
    */
   public String toHex() {
     int[] rgb8 = toRgb8();
