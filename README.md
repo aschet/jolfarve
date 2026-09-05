@@ -13,12 +13,6 @@ against the CIE 1931 color matching functions of the 2 degree standard
 colorimetric observer under illuminant D65, and the resulting XYZ tristimulus
 values are transformed to sRGB.
 
-This is a Java port of [pyolfarve](https://github.com/aschet/pyolfarve),
-kept numerically and structurally aligned with it. It has no runtime
-dependencies and targets Java 8 bytecode, so it works as a plain dependency
-in desktop, server, and **Android** projects alike (Android's Gradle build
-resolves `mavenCentral()` by default; no separate AAR is needed).
-
 ## Installation
 
 Maven:
@@ -36,6 +30,11 @@ Gradle (including Android modules):
 ```kotlin
 implementation("io.github.aschet:olfarve:1.0.0")
 ```
+
+The library has no runtime dependencies and targets Java 8 bytecode, so it
+works as a plain dependency in desktop, server, and **Android** projects
+alike (Android's Gradle build resolves `mavenCentral()` by default; no
+separate AAR is needed).
 
 ## Usage
 
@@ -96,10 +95,3 @@ mvn test
 mvn spotless:check   # mvn spotless:apply to fix formatting
 mvn package
 ```
-
-## Publishing
-
-Releases are published to Maven Central from a GitHub Release via
-`.github/workflows/publish.yml`, using Sonatype's Central Portal. To cut a
-release: bump the version in `pom.xml` and `Olfarve.VERSION` together, tag it
-(`vX.Y.Z`), and publish a GitHub Release from that tag.
