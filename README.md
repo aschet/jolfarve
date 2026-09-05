@@ -59,29 +59,6 @@ color.toRgb8();
 Olfarve.absorptionToSrgb(0.7874);
 ```
 
-## Command line
-
-The jar is directly executable and takes one or more color values, printing
-them as CSV:
-
-```bash
-java -jar olfarve-1.0.0.jar 1 2 10
-```
-
-```
-1,#fae8b6
-2,#f4d180
-10,#ba5b00
-```
-
-Pick a scale and a path length:
-
-```bash
-java -jar olfarve-1.0.0.jar --scale ebc --path-length 1.0 8 20 40
-```
-
-Run `java -jar olfarve-1.0.0.jar --help` for the full list of options.
-
 ## Development
 
 This project builds with [Maven](https://maven.apache.org/).

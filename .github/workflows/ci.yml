@@ -44,36 +44,6 @@ jobs:
       - name: Verify
         run: mvn --batch-mode verify
 
-  smoke-test-java8:
-    name: Run packaged jar on a real Java 8 runtime
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-      - name: Build jar
-        # JUnit itself requires Java 17+ to run, so tests can't execute on JDK 8 - this job
-        # instead proves the shipped --release 8 bytecode actually runs on a real Java 8 JVM,
-        # the way a consumer would use it.
-        run: mvn --batch-mode -Dmaven.test.skip=true package
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "8"
-      - name: Run on Java 8
-        run: |
-          java -version
-          output="$(java -jar target/olfarve-*.jar 1 2 10)"
-          expected="$(printf '1,#fae8b6\n2,#f4d180\n10,#ba5b00')"
-          echo "$output"
-          if [ "$output" != "$expected" ]; then
-            echo "::error::Output did not match expected reference values"
-            exit 1
-          fi
-
   build:
     name: Build release artifacts
     runs-on: ubuntu-latest
