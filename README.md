@@ -32,9 +32,9 @@ implementation("io.github.aschet:olfarve:1.0.0")
 ```
 
 The library has no runtime dependencies and targets Java 8 bytecode, so it
-works as a plain dependency in desktop, server, and **Android** projects
-alike (Android's Gradle build resolves `mavenCentral()` by default; no
-separate AAR is needed).
+works as a plain dependency in desktop, server, and Android projects alike
+(Android's Gradle build resolves `mavenCentral()` by default; no separate AAR
+is needed).
 
 ## Usage
 
@@ -58,10 +58,6 @@ color.toRgb8();
 // Or start from an absorbance measured at 430 nm
 Olfarve.absorptionToSrgb(0.7874);
 ```
-
-`SrgbColor` deliberately has no conversion to `java.awt.Color` or any other
-platform color type — `toRgb8()` already makes that a one-liner, and it keeps
-this library free of a `java.desktop` dependency that Android doesn't have.
 
 ## Command line
 

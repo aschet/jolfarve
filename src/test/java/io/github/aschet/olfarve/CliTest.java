@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link Cli}, mirroring pyolfarve's {@code tests/test_cli.py}. */
@@ -29,17 +29,18 @@ class CliTest {
   }
 
   private static Result run(String... args) {
-    ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
-    ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
-    int status =
-        Cli.run(
-            args,
-            new PrintStream(outBytes, true, StandardCharsets.UTF_8),
-            new PrintStream(errBytes, true, StandardCharsets.UTF_8));
-    return new Result(
-        status,
-        outBytes.toString(StandardCharsets.UTF_8),
-        errBytes.toString(StandardCharsets.UTF_8));
+    try {
+      ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
+      ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+      int status =
+          Cli.run(
+              args,
+              new PrintStream(outBytes, true, "UTF-8"),
+              new PrintStream(errBytes, true, "UTF-8"));
+      return new Result(status, outBytes.toString("UTF-8"), errBytes.toString("UTF-8"));
+    } catch (UnsupportedEncodingException e) {
+      throw new AssertionError("UTF-8 is always supported", e);
+    }
   }
 
   @Test
