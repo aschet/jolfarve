@@ -4,6 +4,10 @@
 
 package io.github.aschet.olfarve;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
 /**
  * sRGB rendering of SRM and EBC beer color values.
  *
@@ -18,8 +22,11 @@ package io.github.aschet.olfarve;
  */
 public final class Olfarve {
 
-  /** The version of this library, kept in sync with the {@code pom.xml} version. */
-  public static final String VERSION = "1.0.0";
+  /**
+   * The version of this library, read from a resource filtered at build time so {@code pom.xml}
+   * stays the single source of truth.
+   */
+  public static final String VERSION = loadVersion();
 
   /**
    * Default optical path length in cm, set to the typical sample glass width specified by the <a
@@ -52,6 +59,22 @@ public final class Olfarve {
   private static final double[][] SPECTRUM = buildSpectrum();
 
   private Olfarve() {}
+
+  /**
+   * Reads {@code version.properties}, a resource filtered at build time with the {@code pom.xml}
+   * version, so the two never drift apart.
+   */
+  private static String loadVersion() {
+    Properties properties = new Properties();
+    try (InputStream in = Olfarve.class.getResourceAsStream("version.properties")) {
+      if (in != null) {
+        properties.load(in);
+      }
+    } catch (IOException e) {
+      // Fall through: getProperty below returns the "unknown" default.
+    }
+    return properties.getProperty("version", "unknown");
+  }
 
   /**
    * Returns the normalizing constant for illuminant D65.
