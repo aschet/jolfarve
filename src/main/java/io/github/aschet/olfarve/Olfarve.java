@@ -1,0 +1,229 @@
+// SPDX-FileCopyrightText: 2026 Thomas Ascher <thomas.ascher@gmx.at>
+//
+// SPDX-License-Identifier: MIT
+
+package io.github.aschet.olfarve;
+
+/**
+ * sRGB rendering of SRM and EBC beer color values.
+ *
+ * <p>The spectral model is A. J. de Lange, "Color," in <i>Brewing Materials and Processes</i>,
+ * Elsevier, 2016, pp. 199-249: beer's transmittance across the visible range is approximated from
+ * its absorption at 430 nm. Integrating that against the CIE 1931 color matching functions under
+ * illuminant D65 gives XYZ tristimulus values, which are then transformed to sRGB.
+ *
+ * <p>The sRGB primaries, white point and gamma encoding follow <a
+ * href="https://www.w3.org/Graphics/Color/srgb">w3.org</a>. The colorimetric data is documented in
+ * {@link CieData}.
+ */
+public final class Olfarve {
+
+  /** The version of this library, kept in sync with the {@code pom.xml} version. */
+  public static final String VERSION = "1.0.0";
+
+  /**
+   * Default optical path length in cm, set to the typical sample glass width specified by the <a
+   * href="https://www.bjcp.org/education-training/education-resources/color-guide">BJCP color
+   * guide</a>.
+   */
+  public static final double DEFAULT_PATH_LENGTH_CM = 5.0;
+
+  // Both scales are defined as a multiple of the absorbance at 430 nm measured over a 1 cm path:
+  // SRM = 12.7 * A430 and EBC = 25.0 * A430.
+  private static final double SRM_PER_ABSORBANCE = 12.7;
+  private static final double EBC_PER_ABSORBANCE = 25.0;
+
+  // The de Lange approximation sums two exponentials decaying away from 430 nm, giving absorption
+  // at any wavelength relative to the absorption there.
+  private static final double REFERENCE_WAVELENGTH_NM = 430.0;
+  private static final double SHORT_DECAY_WEIGHT = 0.02465;
+  private static final double SHORT_DECAY_NM = 17.591;
+  private static final double LONG_DECAY_WEIGHT = 0.97535;
+  private static final double LONG_DECAY_NM = 82.122;
+
+  // Piecewise sRGB gamma encoding: linear below the threshold, a power law above it.
+  private static final double GAMMA_THRESHOLD = 0.0031308;
+  private static final double GAMMA_SLOPE = 12.92;
+  private static final double GAMMA_SCALE = 1.055;
+  private static final double GAMMA_OFFSET = 0.055;
+  private static final double GAMMA_EXPONENT = 1.0 / 2.4;
+
+  private static final double K = calculateK();
+  private static final double[][] SPECTRUM = buildSpectrum();
+
+  private Olfarve() {}
+
+  /**
+   * Returns the normalizing constant for illuminant D65.
+   *
+   * <p>CIE defines {@code k = 100 / sum(S(lambda) * yBar(lambda))}, putting the luminance of a
+   * perfectly transmitting sample at 100. Dropping the factor of 100 puts it at 1.0 instead, which
+   * is the range sRGB expects.
+   */
+  private static double calculateK() {
+    double luminance = 0.0;
+    for (double[] sample : CieData.SAMPLES) {
+      double yBar = sample[1];
+      double sD65 = sample[3];
+      luminance += sD65 * yBar;
+    }
+    return 1.0 / luminance;
+  }
+
+  /** Returns absorption at {@code wavelengthNm} relative to that at 430 nm. */
+  private static double absorptionRatio(double wavelengthNm) {
+    double offsetNm = wavelengthNm - REFERENCE_WAVELENGTH_NM;
+    return SHORT_DECAY_WEIGHT * Math.exp(-offsetNm / SHORT_DECAY_NM)
+        + LONG_DECAY_WEIGHT * Math.exp(-offsetNm / LONG_DECAY_NM);
+  }
+
+  /**
+   * Precomputes the wavelength dependent terms of the integration.
+   *
+   * <p>Only the absorbance varies between conversions. The absorption ratios and the colorimetric
+   * weights depend solely on wavelength, so they are evaluated once at class initialization rather
+   * than on every call. Each row is {@code {absorptionRatio, sD65, xBar, yBar, zBar}}.
+   */
+  private static double[][] buildSpectrum() {
+    double[][] spectrum = new double[CieData.SAMPLES.length][5];
+    double wavelengthNm = CieData.FIRST_WAVELENGTH_NM;
+    for (int i = 0; i < CieData.SAMPLES.length; i++) {
+      double[] sample = CieData.SAMPLES[i];
+      double xBar = sample[0];
+      double yBar = sample[1];
+      double zBar = sample[2];
+      double sD65 = sample[3];
+      spectrum[i] = new double[] {absorptionRatio(wavelengthNm), sD65, xBar, yBar, zBar};
+      wavelengthNm += CieData.WAVELENGTH_STEP_NM;
+    }
+    return spectrum;
+  }
+
+  /**
+   * Gamma encodes one linear component, clamping it to {@code [0, 1]} first.
+   *
+   * <p>This is the inverse of the sRGB EOTF: it maps a linear tristimulus component to the
+   * non-linear signal a display decodes.
+   */
+  private static double encodeGamma(double linear) {
+    double clamped = Math.max(0.0, Math.min(1.0, linear));
+    if (clamped <= GAMMA_THRESHOLD) {
+      return clamped * GAMMA_SLOPE;
+    }
+    return GAMMA_SCALE * Math.pow(clamped, GAMMA_EXPONENT) - GAMMA_OFFSET;
+  }
+
+  /**
+   * Converts a beer's absorption at 430 nm into an sRGB color, using {@link
+   * #DEFAULT_PATH_LENGTH_CM} as the path length.
+   *
+   * @param absorption430 linear decadic absorption coefficient at 430 nm, in cm^-1
+   * @return the gamma encoded color, with components in {@code [0, 1]}
+   * @throws IllegalArgumentException if {@code absorption430} is negative
+   */
+  public static SrgbColor absorptionToSrgb(double absorption430) {
+    return absorptionToSrgb(absorption430, DEFAULT_PATH_LENGTH_CM);
+  }
+
+  /**
+   * Converts a beer's absorption at 430 nm into an sRGB color.
+   *
+   * <p>Prefer {@link #srmToSrgb} or {@link #ebcToSrgb} when you have a color value, which is what
+   * brewing software reports. This method is for a photometer reading taken directly, where the
+   * absorbance is the measurement and the SRM or EBC value is derived from it.
+   *
+   * @param absorption430 linear decadic absorption coefficient at 430 nm, in cm^-1. Numerically
+   *     this is the ASBC/EBC absorbance A430, which is defined for a 1 cm path length.
+   * @param pathLengthCm optical path length in cm, e.g. the glass width
+   * @return the gamma encoded color, with components in {@code [0, 1]}
+   * @throws IllegalArgumentException if either argument is negative
+   */
+  public static SrgbColor absorptionToSrgb(double absorption430, double pathLengthCm) {
+    if (absorption430 < 0.0) {
+      throw new IllegalArgumentException(
+          "absorption430 must not be negative, got " + absorption430);
+    }
+    if (pathLengthCm < 0.0) {
+      throw new IllegalArgumentException("pathLengthCm must not be negative, got " + pathLengthCm);
+    }
+
+    // Beer-Lambert law: absorbance A = a * l, and transmittance T = 10 ** -A.
+    double absorbance430 = absorption430 * pathLengthCm;
+
+    double tristimulusX = 0.0;
+    double tristimulusY = 0.0;
+    double tristimulusZ = 0.0;
+    for (double[] entry : SPECTRUM) {
+      double absorptionRatio = entry[0];
+      double sD65 = entry[1];
+      double xBar = entry[2];
+      double yBar = entry[3];
+      double zBar = entry[4];
+      double transmittedPower = sD65 * Math.pow(10.0, -absorbance430 * absorptionRatio);
+      tristimulusX += transmittedPower * xBar;
+      tristimulusY += transmittedPower * yBar;
+      tristimulusZ += transmittedPower * zBar;
+    }
+
+    tristimulusX *= K;
+    tristimulusY *= K;
+    tristimulusZ *= K;
+
+    // XYZ to linear sRGB, D65 white point.
+    return new SrgbColor(
+        encodeGamma(
+            tristimulusX * 3.2406255 + tristimulusY * -1.537208 + tristimulusZ * -0.4986286),
+        encodeGamma(
+            tristimulusX * -0.9689307 + tristimulusY * 1.8757561 + tristimulusZ * 0.0415175),
+        encodeGamma(
+            tristimulusX * 0.0557101 + tristimulusY * -0.2040211 + tristimulusZ * 1.0569959));
+  }
+
+  /**
+   * Converts a Standard Reference Method color value into an sRGB color, using {@link
+   * #DEFAULT_PATH_LENGTH_CM} as the path length.
+   *
+   * @param srm the SRM color value
+   * @return the gamma encoded color, with components in {@code [0, 1]}
+   * @throws IllegalArgumentException if {@code srm} is negative
+   */
+  public static SrgbColor srmToSrgb(double srm) {
+    return srmToSrgb(srm, DEFAULT_PATH_LENGTH_CM);
+  }
+
+  /**
+   * Converts a Standard Reference Method color value into an sRGB color.
+   *
+   * @param srm the SRM color value
+   * @param pathLengthCm optical path length in cm, e.g. the glass width
+   * @return the gamma encoded color, with components in {@code [0, 1]}
+   * @throws IllegalArgumentException if either argument is negative
+   */
+  public static SrgbColor srmToSrgb(double srm, double pathLengthCm) {
+    return absorptionToSrgb(srm / SRM_PER_ABSORBANCE, pathLengthCm);
+  }
+
+  /**
+   * Converts a European Brewery Convention color value into an sRGB color, using {@link
+   * #DEFAULT_PATH_LENGTH_CM} as the path length.
+   *
+   * @param ebc the EBC color value
+   * @return the gamma encoded color, with components in {@code [0, 1]}
+   * @throws IllegalArgumentException if {@code ebc} is negative
+   */
+  public static SrgbColor ebcToSrgb(double ebc) {
+    return ebcToSrgb(ebc, DEFAULT_PATH_LENGTH_CM);
+  }
+
+  /**
+   * Converts a European Brewery Convention color value into an sRGB color.
+   *
+   * @param ebc the EBC color value
+   * @param pathLengthCm optical path length in cm, e.g. the glass width
+   * @return the gamma encoded color, with components in {@code [0, 1]}
+   * @throws IllegalArgumentException if either argument is negative
+   */
+  public static SrgbColor ebcToSrgb(double ebc, double pathLengthCm) {
+    return absorptionToSrgb(ebc / EBC_PER_ABSORBANCE, pathLengthCm);
+  }
+}
