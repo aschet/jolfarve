@@ -39,24 +39,24 @@ is needed).
 ## Usage
 
 ```java
-import io.github.aschet.olfarve.Olfarve;
+import io.github.aschet.olfarve.BeerColor;
 import io.github.aschet.olfarve.SrgbColor;
 
-Olfarve.srmToSrgb(10).toHex();
-Olfarve.ebcToSrgb(20).toHex();
+BeerColor.srmToSrgb(10).toHex();
+BeerColor.ebcToSrgb(20).toHex();
 
 // The default path length is 5 cm, the width of a typical sample glass
-Olfarve.srmToSrgb(10, 1.0).toHex();
+BeerColor.srmToSrgb(10, 1.0).toHex();
 
 // Results are SrgbColor values with gamma encoded components in [0, 1]
-SrgbColor color = Olfarve.srmToSrgb(10);
+SrgbColor color = BeerColor.srmToSrgb(10);
 color.getR();
 color.getG();
 color.getB();
 color.toRgb8();
 
 // Or start from an absorbance measured at 430 nm
-Olfarve.absorptionToSrgb(0.7874);
+BeerColor.absorptionToSrgb(0.7874);
 ```
 
 ## Development

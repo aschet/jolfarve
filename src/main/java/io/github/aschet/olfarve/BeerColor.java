@@ -18,9 +18,9 @@ import java.util.Properties;
  *
  * <p>The sRGB primaries, white point and gamma encoding follow <a
  * href="https://www.w3.org/Graphics/Color/srgb">w3.org</a>. The colorimetric data is documented in
- * {@link CieData}.
+ * {@link Cie}.
  */
-public final class Olfarve {
+public final class BeerColor {
 
   /**
    * The version of this library, read from a resource filtered at build time so {@code pom.xml}
@@ -56,9 +56,32 @@ public final class Olfarve {
   private static final double GAMMA_EXPONENT = 1.0 / 2.4;
 
   private static final double K = calculateK();
-  private static final double[][] SPECTRUM = buildSpectrum();
+  private static final SpectrumEntry[] SPECTRUM = buildSpectrum();
 
-  private Olfarve() {}
+  private BeerColor() {}
+
+  /**
+   * Precomputed wavelength dependent terms of the integration.
+   *
+   * <p>Only the absorbance varies between conversions. The absorption ratios and the colorimetric
+   * weights depend solely on wavelength, so they are evaluated once at class initialization rather
+   * than on every call.
+   */
+  private static final class SpectrumEntry {
+    final double absorptionRatio;
+    final double sD65;
+    final double xBar;
+    final double yBar;
+    final double zBar;
+
+    SpectrumEntry(double absorptionRatio, double sD65, double xBar, double yBar, double zBar) {
+      this.absorptionRatio = absorptionRatio;
+      this.sD65 = sD65;
+      this.xBar = xBar;
+      this.yBar = yBar;
+      this.zBar = zBar;
+    }
+  }
 
   /**
    * Reads {@code version.properties}, a resource filtered at build time with the {@code pom.xml}
@@ -66,7 +89,7 @@ public final class Olfarve {
    */
   private static String loadVersion() {
     Properties properties = new Properties();
-    try (InputStream in = Olfarve.class.getResourceAsStream("version.properties")) {
+    try (InputStream in = BeerColor.class.getResourceAsStream("version.properties")) {
       if (in != null) {
         properties.load(in);
       }
@@ -85,10 +108,8 @@ public final class Olfarve {
    */
   private static double calculateK() {
     double luminance = 0.0;
-    for (double[] sample : CieData.SAMPLES) {
-      double yBar = sample[1];
-      double sD65 = sample[3];
-      luminance += sD65 * yBar;
+    for (CieSample sample : Cie.SAMPLES) {
+      luminance += sample.sD65 * sample.yBar;
     }
     return 1.0 / luminance;
   }
@@ -100,24 +121,15 @@ public final class Olfarve {
         + LONG_DECAY_WEIGHT * Math.exp(-offsetNm / LONG_DECAY_NM);
   }
 
-  /**
-   * Precomputes the wavelength dependent terms of the integration.
-   *
-   * <p>Only the absorbance varies between conversions. The absorption ratios and the colorimetric
-   * weights depend solely on wavelength, so they are evaluated once at class initialization rather
-   * than on every call. Each row is {@code {absorptionRatio, sD65, xBar, yBar, zBar}}.
-   */
-  private static double[][] buildSpectrum() {
-    double[][] spectrum = new double[CieData.SAMPLES.length][5];
-    double wavelengthNm = CieData.FIRST_WAVELENGTH_NM;
-    for (int i = 0; i < CieData.SAMPLES.length; i++) {
-      double[] sample = CieData.SAMPLES[i];
-      double xBar = sample[0];
-      double yBar = sample[1];
-      double zBar = sample[2];
-      double sD65 = sample[3];
-      spectrum[i] = new double[] {absorptionRatio(wavelengthNm), sD65, xBar, yBar, zBar};
-      wavelengthNm += CieData.WAVELENGTH_STEP_NM;
+  private static SpectrumEntry[] buildSpectrum() {
+    SpectrumEntry[] spectrum = new SpectrumEntry[Cie.SAMPLES.length];
+    double wavelengthNm = Cie.FIRST_WAVELENGTH_NM;
+    for (int i = 0; i < Cie.SAMPLES.length; i++) {
+      CieSample sample = Cie.SAMPLES[i];
+      spectrum[i] =
+          new SpectrumEntry(
+              absorptionRatio(wavelengthNm), sample.sD65, sample.xBar, sample.yBar, sample.zBar);
+      wavelengthNm += Cie.WAVELENGTH_STEP_NM;
     }
     return spectrum;
   }
@@ -176,16 +188,11 @@ public final class Olfarve {
     double tristimulusX = 0.0;
     double tristimulusY = 0.0;
     double tristimulusZ = 0.0;
-    for (double[] entry : SPECTRUM) {
-      double absorptionRatio = entry[0];
-      double sD65 = entry[1];
-      double xBar = entry[2];
-      double yBar = entry[3];
-      double zBar = entry[4];
-      double transmittedPower = sD65 * Math.pow(10.0, -absorbance430 * absorptionRatio);
-      tristimulusX += transmittedPower * xBar;
-      tristimulusY += transmittedPower * yBar;
-      tristimulusZ += transmittedPower * zBar;
+    for (SpectrumEntry entry : SPECTRUM) {
+      double transmittedPower = entry.sD65 * Math.pow(10.0, -absorbance430 * entry.absorptionRatio);
+      tristimulusX += transmittedPower * entry.xBar;
+      tristimulusY += transmittedPower * entry.yBar;
+      tristimulusZ += transmittedPower * entry.zBar;
     }
 
     tristimulusX *= K;

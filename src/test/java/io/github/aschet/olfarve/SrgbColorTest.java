@@ -42,7 +42,7 @@ class SrgbColorTest {
   @Test
   void hexAgreesWithRgb8() {
     for (int srm = 0; srm <= 60; srm++) {
-      SrgbColor color = Olfarve.srmToSrgb(srm);
+      SrgbColor color = BeerColor.srmToSrgb(srm);
       int[] rgb8 = color.toRgb8();
       String expected = String.format("#%02x%02x%02x", rgb8[0], rgb8[1], rgb8[2]);
       assertEquals(expected, color.toHex());
