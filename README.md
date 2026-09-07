@@ -61,8 +61,6 @@ BeerColor.absorptionToSrgb(0.7874);
 
 ## Development
 
-This project builds with [Maven](https://maven.apache.org/).
-
 ```bash
 mvn test
 mvn spotless:check   # mvn spotless:apply to fix formatting
